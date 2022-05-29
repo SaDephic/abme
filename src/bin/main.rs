@@ -1,18 +1,30 @@
 use abme::ThreadPool;
+
 use std::fs;
 use std::io::prelude::*;
-use std::net::TcpListener;
+
 use std::net::TcpStream;
 use std::thread;
 use std::time::Duration;
 
+use std::net::{SocketAddr, TcpListener};
+
 fn main() {
-    let listener = TcpListener::bind("127.0.0.1:600").unwrap();
+    /*
+        обработка соединений по портам
+        600 данные
+        80 страница
+        ---
+    */
+    let addrs = [
+        SocketAddr::from(([127, 0, 0, 1], 80)),
+        SocketAddr::from(([127, 0, 0, 1], 600)),
+    ];
+    let listener = TcpListener::bind(&addrs[..]).unwrap();
     let pool = ThreadPool::new(4);
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-
         pool.execute(|| {
             handle_connection(stream);
         });
@@ -29,12 +41,12 @@ fn handle_connection(mut stream: TcpStream) {
     let sleep = b"GET /sleep HTTP/1.1\r\n";
 
     let (status_line, filename) = if buffer.starts_with(get) {
-        ("HTTP/1.1 200 OK", "resources/index.html")
+        ("HTTP/1.1 200 OK", "html/index.html")
     } else if buffer.starts_with(sleep) {
         thread::sleep(Duration::from_secs(5));
-        ("HTTP/1.1 200 OK", "resources/index.html")
+        ("HTTP/1.1 200 OK", "html/index.html")
     } else {
-        ("HTTP/1.1 404 NOT FOUND", "resources/404.html")
+        ("HTTP/1.1 404 NOT FOUND", "html/errors/404.html")
     };
 
     let contents = fs::read_to_string(filename).unwrap();
